@@ -5,7 +5,17 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+import streamlit as st
 from dotenv import load_dotenv
+
+def get_env_or_secret(key: str, default: Any = None) -> Any:
+    """Get value from environment or Streamlit secrets."""
+    # Try Streamlit secrets first
+    try:
+        return st.secrets[key]
+    except (KeyError, AttributeError):
+        # Fallback to environment variable
+        return os.getenv(key, default)
 
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """Load application configuration from environment and config files."""
@@ -13,33 +23,34 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     env_path = Path('.env')
     load_dotenv(env_path if env_path.exists() else '.env.example')
     
-    # Debug print
-    print(f"Debug - GROQ_API_KEY loaded: {'*' * 4}{os.getenv('GROQ_API_KEY')[-4:] if os.getenv('GROQ_API_KEY') else 'Not found'}")
+    # Debug print (masked for security)
+    api_key = get_env_or_secret('GROQ_API_KEY', '')
+    print(f"Debug - GROQ_API_KEY loaded: {'*' * 4}{api_key[-4:] if api_key else 'Not found'}")
     
     config = {
         # Core settings
-        'env': os.getenv('APP_ENV', 'development'),
-        'debug': os.getenv('DEBUG', 'false').lower() == 'true',
-        'log_level': os.getenv('LOG_LEVEL', 'INFO'),
+        'env': get_env_or_secret('APP_ENV', 'development'),
+        'debug': get_env_or_secret('DEBUG', 'false').lower() == 'true',
+        'log_level': get_env_or_secret('LOG_LEVEL', 'INFO'),
         
         # API settings
         'api': {
-            'host': os.getenv('API_HOST', 'localhost'),
-            'port': int(os.getenv('API_PORT', '8000')),
+            'host': get_env_or_secret('API_HOST', 'localhost'),
+            'port': int(get_env_or_secret('API_PORT', '8000')),
         },
         
         # Agent settings
         'agent': {
-            'api_key': os.getenv('GROQ_API_KEY', ''),
-            'model': os.getenv('MODEL_NAME', 'mixtral-8x7b-32768'),
-            'temperature': float(os.getenv('MODEL_TEMPERATURE', '0.7')),
+            'api_key': api_key,
+            'model': get_env_or_secret('MODEL_NAME', 'mixtral-8x7b-32768'),
+            'temperature': float(get_env_or_secret('MODEL_TEMPERATURE', '0.7')),
         },
         
         # Memory settings
         'memory': {
-            'type': os.getenv('MEMORY_TYPE', 'vector'),
-            'backend': os.getenv('MEMORY_BACKEND', 'chroma'),
-            'path': os.getenv('MEMORY_PATH', './data/memory'),
+            'type': get_env_or_secret('MEMORY_TYPE', 'vector'),
+            'backend': get_env_or_secret('MEMORY_BACKEND', 'chroma'),
+            'path': get_env_or_secret('MEMORY_PATH', './data/memory'),
         }
     }
     
